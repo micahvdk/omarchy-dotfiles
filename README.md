@@ -7,6 +7,7 @@ My personal dotfiles for [Omarchy](https://omarchy.org) (Arch Linux).
 - **Prompt:** [Starship](https://starship.rs) — Pastel Powerline preset
 - **Plugins:** `zsh-autosuggestions`, `zsh-syntax-highlighting`
 - **Version manager:** [mise](https://mise.jdx.dev)
+- **Secrets:** [fnox](https://fnox.jdx.dev) (auto-loaded on `cd` into a project with `fnox.toml`)
 - **Navigation:** zoxide + fzf (both shipped with Omarchy)
 - **Editor:** Neovim
 
@@ -21,10 +22,22 @@ exec zsh
 
 The installer is idempotent and will:
 - `pacman -S --needed` the required packages
+- `yay -S --needed` AUR packages (fnox)
 - Symlink configs into `$HOME` and `$XDG_CONFIG_HOME` (overwriting anything there)
 - Create `~/.ssh/config.d/` for per-host overrides
 - Copy `zsh/secret.zsh.example` to `zsh/secret.zsh` (gitignored) for private exports
 - `chsh` your login shell to zsh
+
+### Bootstrap GitHub SSH
+
+After `install.sh`, authenticate with GitHub over SSH in one shot:
+
+```sh
+./bin/bootstrap-github-ssh
+```
+
+This generates `~/.ssh/id_ed25519` (if missing), adds it to ssh-agent, uploads
+the public key to your GitHub account via `gh`, and verifies the connection.
 
 ## Layout
 
@@ -41,6 +54,8 @@ mise/
   config.toml   # ~/.config/mise/config.toml — global tool versions
 ssh/
   config        # ~/.ssh/config — includes ~/.ssh/config.d/*.config
+bin/
+  bootstrap-github-ssh  # one-shot: generate key + upload to GitHub via gh
 install.sh
 ```
 

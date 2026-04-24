@@ -13,7 +13,7 @@ die()  { printf '\033[1;31mxxx\033[0m %s\n' "$*" >&2; exit 1; }
 
 [[ -f /etc/arch-release ]] || die "This installer targets Arch Linux / Omarchy."
 
-log "Installing packages"
+log "Installing packages (pacman)"
 sudo pacman -S --needed --noconfirm \
   zsh \
   zsh-autosuggestions \
@@ -24,7 +24,15 @@ sudo pacman -S --needed --noconfirm \
   zoxide \
   fzf \
   git \
+  github-cli \
+  openssh \
   neovim
+
+log "Installing AUR packages (yay)"
+if ! command -v yay &>/dev/null; then
+  die "yay is required for AUR packages (fnox). Install yay first."
+fi
+yay -S --needed --noconfirm fnox
 
 link() {
   local src="$1" dst="$2"
@@ -55,3 +63,4 @@ if [[ "${SHELL:-}" != "$ZSH_BIN" ]]; then
 fi
 
 log "Done. Open a new terminal (or run 'exec zsh') to pick up changes."
+log "To authenticate with GitHub via SSH, run: $DOTFILES/bin/bootstrap-github-ssh"
