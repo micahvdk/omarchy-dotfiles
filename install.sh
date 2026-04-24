@@ -49,10 +49,23 @@ link "$DOTFILES/zsh/zshrc"              "$HOME/.zshrc"
 link "$DOTFILES/starship/starship.toml" "$HOME/.config/starship.toml"
 link "$DOTFILES/mise/config.toml"       "$HOME/.config/mise/config.toml"
 link "$DOTFILES/tmux/tmux.conf"         "$HOME/.config/tmux/tmux.conf"
+link "$DOTFILES/hypr/overrides.conf"    "$HOME/.config/hypr/overrides.conf"
 link "$DOTFILES/ssh/config"             "$HOME/.ssh/config"
 
 mkdir -p "$HOME/.ssh/config.d"
 chmod 700 "$HOME/.ssh" "$HOME/.ssh/config.d"
+
+# Ensure Hyprland sources our overrides file (idempotent).
+HYPR_MAIN="$HOME/.config/hypr/hyprland.conf"
+HYPR_SRC_LINE="source = ~/.config/hypr/overrides.conf"
+if [[ -f "$HYPR_MAIN" ]] && ! grep -qxF "$HYPR_SRC_LINE" "$HYPR_MAIN"; then
+  log "Sourcing hypr/overrides.conf from $HYPR_MAIN"
+  printf '\n# Personal overrides from omarchy-dotfiles\n%s\n' "$HYPR_SRC_LINE" >> "$HYPR_MAIN"
+fi
+
+if command -v hyprctl &>/dev/null && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+  hyprctl reload >/dev/null 2>&1 || true
+fi
 
 if [[ ! -f "$DOTFILES/zsh/secret.zsh" ]]; then
   cp "$DOTFILES/zsh/secret.zsh.example" "$DOTFILES/zsh/secret.zsh"

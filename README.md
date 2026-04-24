@@ -56,6 +56,8 @@ mise/
   config.toml   # ~/.config/mise/config.toml — global tool versions
 tmux/
   tmux.conf     # ~/.config/tmux/tmux.conf
+hypr/
+  overrides.conf  # ~/.config/hypr/overrides.conf (Caps Lock → Escape, etc.)
 ssh/
   config        # ~/.ssh/config — includes ~/.ssh/config.d/*.config
 bin/
