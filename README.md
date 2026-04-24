@@ -9,6 +9,7 @@ My personal dotfiles for [Omarchy](https://omarchy.org) (Arch Linux).
 - **Plugins:** `zsh-autosuggestions`, `zsh-syntax-highlighting`
 - **Version manager:** [mise](https://mise.jdx.dev)
 - **Secrets:** [fnox](https://fnox.jdx.dev) (auto-loaded on `cd` into a project with `fnox.toml`)
+- **Multiplexer:** tmux (prefix `C-a`, vi copy-mode, mouse on, splits `|`/`-`)
 - **Navigation:** zoxide + fzf (both shipped with Omarchy)
 - **Editor:** Neovim
 
@@ -53,6 +54,8 @@ starship/
   starship.toml # ~/.config/starship.toml
 mise/
   config.toml   # ~/.config/mise/config.toml — global tool versions
+tmux/
+  tmux.conf     # ~/.config/tmux/tmux.conf
 ssh/
   config        # ~/.ssh/config — includes ~/.ssh/config.d/*.config
 bin/

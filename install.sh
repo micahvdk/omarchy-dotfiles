@@ -27,6 +27,7 @@ sudo pacman -S --needed --noconfirm \
   github-cli \
   openssh \
   ghostty \
+  tmux \
   neovim
 
 log "Installing AUR packages (yay)"
@@ -47,6 +48,7 @@ log "Linking config"
 link "$DOTFILES/zsh/zshrc"              "$HOME/.zshrc"
 link "$DOTFILES/starship/starship.toml" "$HOME/.config/starship.toml"
 link "$DOTFILES/mise/config.toml"       "$HOME/.config/mise/config.toml"
+link "$DOTFILES/tmux/tmux.conf"         "$HOME/.config/tmux/tmux.conf"
 link "$DOTFILES/ssh/config"             "$HOME/.ssh/config"
 
 mkdir -p "$HOME/.ssh/config.d"
