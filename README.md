@@ -3,7 +3,8 @@
 My personal dotfiles for [Omarchy](https://omarchy.org) (Arch Linux).
 
 ## Stack
-- **Shell:** Zsh (no framework)
+- **Terminal:** [Ghostty](https://ghostty.org) (default on Omarchy; uses your login shell)
+- **Shell:** Zsh (no framework) — set as login shell by `install.sh`
 - **Prompt:** [Starship](https://starship.rs) — Pastel Powerline preset
 - **Plugins:** `zsh-autosuggestions`, `zsh-syntax-highlighting`
 - **Version manager:** [mise](https://mise.jdx.dev)

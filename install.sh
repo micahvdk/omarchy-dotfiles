@@ -26,6 +26,7 @@ sudo pacman -S --needed --noconfirm \
   git \
   github-cli \
   openssh \
+  ghostty \
   neovim
 
 log "Installing AUR packages (yay)"
