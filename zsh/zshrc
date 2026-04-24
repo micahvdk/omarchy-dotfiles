@@ -1,0 +1,60 @@
+# ~/.zshrc — sourced for interactive zsh shells.
+# Mirrors Omarchy's default bash init (mise, starship, zoxide, fzf) so zsh
+# behaves the same as a fresh Omarchy shell.
+
+DOTFILES="${DOTFILES:-$HOME/omarchy-dotfiles}"
+
+# ---------- history ----------
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE \
+       HIST_REDUCE_BLANKS INC_APPEND_HISTORY EXTENDED_HISTORY
+
+# ---------- shell options ----------
+setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS EXTENDED_GLOB INTERACTIVE_COMMENTS
+unsetopt BEEP
+
+# ---------- completion ----------
+autoload -Uz compinit && compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zcompdump"
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+
+# ---------- keybindings ----------
+bindkey -e
+bindkey '^[[A' history-substring-search-up   2>/dev/null || bindkey '^[[A' up-line-or-history
+bindkey '^[[B' history-substring-search-down 2>/dev/null || bindkey '^[[B' down-line-or-history
+
+# ---------- user config ----------
+for f in "$DOTFILES"/zsh/env.zsh \
+         "$DOTFILES"/zsh/aliases.zsh \
+         "$DOTFILES"/zsh/functions.zsh \
+         "$DOTFILES"/zsh/secret.zsh; do
+  [[ -r "$f" ]] && source "$f"
+done
+
+# ---------- tool integrations (match Omarchy default bash init) ----------
+if command -v mise &>/dev/null; then
+  eval "$(mise activate zsh)"
+fi
+
+if command -v zoxide &>/dev/null; then
+  eval "$(zoxide init zsh)"
+fi
+
+if command -v fzf &>/dev/null; then
+  [[ -f /usr/share/fzf/completion.zsh ]]   && source /usr/share/fzf/completion.zsh
+  [[ -f /usr/share/fzf/key-bindings.zsh ]] && source /usr/share/fzf/key-bindings.zsh
+fi
+
+# ---------- plugins (pacman-installed) ----------
+for plugin in \
+  /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh; do
+  [[ -r "$plugin" ]] && source "$plugin"
+done
+
+# ---------- prompt ----------
+if [[ $- == *i* ]] && [[ ${TERM:-} != "dumb" ]] && command -v starship &>/dev/null; then
+  eval "$(starship init zsh)"
+fi
