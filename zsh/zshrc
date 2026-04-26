@@ -15,8 +15,33 @@ setopt APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE \
 setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS EXTENDED_GLOB INTERACTIVE_COMMENTS
 unsetopt BEEP
 
-# ---------- completion ----------
-autoload -Uz compinit && compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zcompdump"
+# ---------- oh-my-zsh ----------
+# Theme is intentionally empty — starship (below) renders the prompt.
+# To switch to an OMZ theme later, set e.g. ZSH_THEME="powerlevel10k/powerlevel10k"
+# and remove the starship init at the bottom of this file.
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME=""
+DISABLE_AUTO_UPDATE="true"
+plugins=(
+  git
+  kubectl
+  gh
+  docker
+  tmux
+  sudo
+  archlinux
+  command-not-found
+  colored-man-pages
+  history-substring-search
+  extract
+)
+
+if [[ -r "$ZSH/oh-my-zsh.sh" ]]; then
+  source "$ZSH/oh-my-zsh.sh"
+else
+  autoload -Uz compinit && compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zcompdump"
+fi
+
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 
@@ -59,6 +84,20 @@ for plugin in \
 done
 
 # ---------- prompt ----------
-if [[ $- == *i* ]] && [[ ${TERM:-} != "dumb" ]] && command -v starship &>/dev/null; then
+if [[ -z "$ZSH_THEME" ]] && [[ $- == *i* ]] && [[ ${TERM:-} != "dumb" ]] && command -v starship &>/dev/null; then
   eval "$(starship init zsh)"
+fi
+
+# ---------- tmux auto-attach ----------
+# Start tmux automatically for interactive terminals: attach to an existing
+# session named "main" or create one. Skip inside tmux, over SSH, in VS Code,
+# in dumb terminals, and when NO_TMUX is set.
+if [[ $- == *i* ]] \
+   && [[ -z "${TMUX:-}" ]] \
+   && [[ -z "${SSH_CONNECTION:-}" ]] \
+   && [[ -z "${VSCODE_INJECTION:-}" ]] \
+   && [[ -z "${NO_TMUX:-}" ]] \
+   && [[ ${TERM:-} != "dumb" ]] \
+   && command -v tmux &>/dev/null; then
+  exec tmux new-session -A -s main
 fi

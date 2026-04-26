@@ -4,9 +4,10 @@ My personal dotfiles for [Omarchy](https://omarchy.org) (Arch Linux).
 
 ## Stack
 - **Terminal:** [Ghostty](https://ghostty.org) (default on Omarchy; uses your login shell)
-- **Shell:** Zsh (no framework) — set as login shell by `install.sh`
-- **Prompt:** [Starship](https://starship.rs) — Pastel Powerline preset
-- **Plugins:** `zsh-autosuggestions`, `zsh-syntax-highlighting`
+- **Shell:** Zsh + [Oh My Zsh](https://ohmyz.sh) — set as login shell by `install.sh`
+- **Prompt:** [Starship](https://starship.rs) — Pastel Powerline preset (OMZ theme is left empty)
+- **OMZ plugins:** `git`, `kubectl`, `gh`, `docker`, `tmux`, `sudo`, `archlinux`, `command-not-found`, `colored-man-pages`, `history-substring-search`, `extract`
+- **Extra zsh plugins:** `zsh-autosuggestions`, `zsh-syntax-highlighting` (loaded after OMZ)
 - **Version manager:** [mise](https://mise.jdx.dev)
 - **Secrets:** [fnox](https://fnox.jdx.dev) (auto-loaded on `cd` into a project with `fnox.toml`)
 - **Multiplexer:** tmux (prefix `C-a`, vi copy-mode, mouse on, splits `|`/`-`)

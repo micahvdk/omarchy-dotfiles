@@ -28,13 +28,29 @@ sudo pacman -S --needed --noconfirm \
   openssh \
   ghostty \
   tmux \
-  neovim
+  neovim \
+  pkgfile
 
 log "Installing AUR packages (yay)"
 if ! command -v yay &>/dev/null; then
   die "yay is required for AUR packages (fnox). Install yay first."
 fi
 yay -S --needed --noconfirm fnox
+
+if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+  log "Installing Oh My Zsh"
+  git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
+else
+  log "Oh My Zsh already installed; skipping clone"
+fi
+
+# pkgfile cache (powers the command-not-found zsh plugin)
+if command -v pkgfile &>/dev/null; then
+  if [[ ! -d /var/cache/pkgfile ]] || [[ -z "$(ls -A /var/cache/pkgfile 2>/dev/null)" ]]; then
+    log "Updating pkgfile cache (one-time)"
+    sudo pkgfile --update
+  fi
+fi
 
 link() {
   local src="$1" dst="$2"
