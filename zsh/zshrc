@@ -17,10 +17,11 @@ unsetopt BEEP
 
 # ---------- oh-my-zsh ----------
 # Theme is intentionally empty — starship (below) renders the prompt.
-# To switch to an OMZ theme later, set e.g. ZSH_THEME="powerlevel10k/powerlevel10k"
-# and remove the starship init at the bottom of this file.
+# To switch back to Starship, clear ZSH_THEME above (set ZSH_THEME="").
+# Theme: classic OMZ "robbyrussell". Starship init below is gated on this
+# being empty, so setting a theme here automatically disables Starship.
 export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME=""
+ZSH_THEME="robbyrussell"
 DISABLE_AUTO_UPDATE="true"
 plugins=(
   git
