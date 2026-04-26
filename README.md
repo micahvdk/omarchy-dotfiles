@@ -5,7 +5,7 @@ My personal dotfiles for [Omarchy](https://omarchy.org) (Arch Linux).
 ## Stack
 - **Terminal:** [Ghostty](https://ghostty.org) (default on Omarchy; uses your login shell)
 - **Shell:** Zsh + [Oh My Zsh](https://ohmyz.sh) — set as login shell by `install.sh`
-- **Prompt:** [Starship](https://starship.rs) — Pastel Powerline preset (OMZ theme is left empty)
+- **Prompt:** [Spaceship](https://spaceship-prompt.sh) — installed as an OMZ custom theme by `install.sh`
 - **OMZ plugins:** `git`, `kubectl`, `gh`, `docker`, `tmux`, `sudo`, `archlinux`, `command-not-found`, `colored-man-pages`, `history-substring-search`, `extract`
 - **Extra zsh plugins:** `zsh-autosuggestions`, `zsh-syntax-highlighting` (loaded after OMZ)
 - **Version manager:** [mise](https://mise.jdx.dev)
@@ -65,8 +65,8 @@ zsh/
   aliases.zsh
   functions.zsh
   secret.zsh    # gitignored; private exports
-starship/
-  starship.toml # ~/.config/starship.toml
+spaceship/
+  spaceship.zsh # SPACESHIP_* config, sourced from zshrc before OMZ loads
 mise/
   config.toml   # ~/.config/mise/config.toml — global tool versions
 tmux/
@@ -83,5 +83,5 @@ install.sh
 ## Customising
 
 - Global tool versions: edit `mise/config.toml` then `mise install`.
-- Prompt: edit `starship/starship.toml` (see [presets](https://starship.rs/presets/)).
+- Prompt: edit `spaceship/spaceship.zsh` (see [Spaceship config](https://spaceship-prompt.sh/config/main/)).
 - Per-host SSH: drop files into `~/.ssh/config.d/`.

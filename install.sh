@@ -19,7 +19,6 @@ sudo pacman -S --needed --noconfirm \
   zsh-autosuggestions \
   zsh-syntax-highlighting \
   zsh-completions \
-  starship \
   mise \
   zoxide \
   fzf \
@@ -47,6 +46,18 @@ else
   log "Oh My Zsh already installed; skipping clone"
 fi
 
+# Spaceship prompt — installed as an OMZ custom theme.
+ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+SPACESHIP_DIR="$ZSH_CUSTOM/themes/spaceship-prompt"
+if [[ ! -d "$SPACESHIP_DIR" ]]; then
+  log "Installing spaceship-prompt"
+  git clone --depth=1 https://github.com/spaceship-prompt/spaceship-prompt.git "$SPACESHIP_DIR"
+else
+  log "spaceship-prompt already installed; skipping clone"
+fi
+mkdir -p "$ZSH_CUSTOM/themes"
+ln -sfn "$SPACESHIP_DIR/spaceship.zsh-theme" "$ZSH_CUSTOM/themes/spaceship.zsh-theme"
+
 # pkgfile cache (powers the command-not-found zsh plugin)
 if command -v pkgfile &>/dev/null; then
   if [[ ! -d /var/cache/pkgfile ]] || [[ -z "$(ls -A /var/cache/pkgfile 2>/dev/null)" ]]; then
@@ -65,7 +76,6 @@ link() {
 
 log "Linking config"
 link "$DOTFILES/zsh/zshrc"              "$HOME/.zshrc"
-link "$DOTFILES/starship/starship.toml" "$HOME/.config/starship.toml"
 link "$DOTFILES/mise/config.toml"       "$HOME/.config/mise/config.toml"
 link "$DOTFILES/tmux/tmux.conf"         "$HOME/.config/tmux/tmux.conf"
 link "$DOTFILES/hypr/overrides.conf"    "$HOME/.config/hypr/overrides.conf"
