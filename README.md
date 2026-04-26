@@ -34,14 +34,16 @@ The installer is idempotent and will:
 
 ### SSH key auto-unlock (Apple Keychain-style)
 
-`gnome-keyring` is installed and started by Hyprland (`exec-once` in
-`hypr/overrides.conf`); `zsh/env.zsh` points `SSH_AUTH_SOCK` at its agent and
-`ssh/config` has `AddKeysToAgent yes`. The installer adds `pam_gnome_keyring`
-to login PAM services so the keyring unlocks with your login password.
+`gnome-keyring` (Secret Service) plus `gcr-4`'s `gcr-ssh-agent.socket` give
+you a persistent SSH agent whose passphrases are stored in the keyring.
+`zsh/env.zsh` points `SSH_AUTH_SOCK` at `$XDG_RUNTIME_DIR/gcr/ssh` and
+`ssh/config` has `AddKeysToAgent yes`. The installer enables the user socket
+and adds `pam_gnome_keyring` to login PAM services so the keyring unlocks
+with your login password.
 
-After install, run `ssh-add ~/.ssh/id_ed25519` once and enter the passphrase —
-it's then remembered for future sessions. Manage stored secrets with
-`seahorse` (install on demand: `sudo pacman -S seahorse`).
+After install, open a new shell and run `ssh-add ~/.ssh/id_ed25519` once —
+enter the passphrase and it's then remembered for future sessions. Manage
+stored secrets with `seahorse` (install on demand: `sudo pacman -S seahorse`).
 
 ### Bootstrap GitHub SSH
 

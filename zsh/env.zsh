@@ -3,10 +3,10 @@ export VISUAL="nvim"
 export PAGER="less"
 export LESS="-FRX"
 
-# Use gnome-keyring's ssh-agent so SSH key passphrases unlock automatically
-# at login (Apple Keychain-style). The daemon is started by Hyprland; PAM
-# unlocks the keyring with the login password. See install.sh for setup.
+# Use gcr-ssh-agent (from gcr-4) so SSH key passphrases are stored in
+# gnome-keyring and unlocked at login (Apple Keychain-style). The agent is a
+# systemd user unit (gcr-ssh-agent.socket) enabled by install.sh.
 if [[ -z "${SSH_AUTH_SOCK:-}" ]] && [[ -n "${XDG_RUNTIME_DIR:-}" ]] \
-   && [[ -S "$XDG_RUNTIME_DIR/keyring/ssh" ]]; then
-  export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/keyring/ssh"
+   && [[ -S "$XDG_RUNTIME_DIR/gcr/ssh" ]]; then
+  export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/gcr/ssh"
 fi

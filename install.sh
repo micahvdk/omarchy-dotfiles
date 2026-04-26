@@ -31,6 +31,7 @@ sudo pacman -S --needed --noconfirm \
   neovim \
   pkgfile \
   gnome-keyring \
+  gcr-4 \
   libsecret
 
 log "Installing AUR packages (yay)"
@@ -105,6 +106,13 @@ configure_keyring_pam() {
 for svc in login greetd sddm gdm-password lightdm ly; do
   configure_keyring_pam "$svc"
 done
+
+# Enable the gcr-ssh-agent user socket so SSH_AUTH_SOCK is available at login.
+if command -v systemctl &>/dev/null; then
+  log "Enabling gcr-ssh-agent.socket (user)"
+  systemctl --user enable --now gcr-ssh-agent.socket >/dev/null 2>&1 || \
+    warn "Failed to enable gcr-ssh-agent.socket (run manually: systemctl --user enable --now gcr-ssh-agent.socket)"
+fi
 
 if [[ ! -f "$DOTFILES/zsh/secret.zsh" ]]; then
   cp "$DOTFILES/zsh/secret.zsh.example" "$DOTFILES/zsh/secret.zsh"
