@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# tmux-battery — print battery charge with a glyph reflecting state.
+# Reads /sys/class/power_supply/BAT* directly so it works without acpi.
+
+set -eu
+
+shopt -s nullglob
+batteries=(/sys/class/power_supply/BAT*)
+[[ ${#batteries[@]} -gt 0 ]] || exit 0
+
+bat="${batteries[0]}"
+cap=$(<"$bat/capacity")
+status=$(<"$bat/status")
+
+case "$status" in
+  Charging|Full) glyph="󰂄" ;;
+  *)
+    if   (( cap >= 90 )); then glyph="󰁹"
+    elif (( cap >= 70 )); then glyph="󰂁"
+    elif (( cap >= 50 )); then glyph="󰁾"
+    elif (( cap >= 30 )); then glyph="󰁼"
+    elif (( cap >= 15 )); then glyph="󰁻"
+    else                       glyph="󰁺"
+    fi
+    ;;
+esac
+
+printf '%s %s%%\n' "$glyph" "$cap"

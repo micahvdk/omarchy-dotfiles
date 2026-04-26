@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# tmux-cpu — print CPU usage as a percentage.
+# Samples /proc/stat across invocations (cached in /tmp), so the first
+# call returns "--" and subsequent calls return real deltas.
+
+set -eu
+
+state="/tmp/tmux-cpu.${USER:-$(id -u)}"
+
+read -r _ u n s i io irq sirq steal _ < /proc/stat
+total=$((u + n + s + i + io + irq + sirq + steal))
+busy=$((total - i - io))
+
+if [[ -r "$state" ]]; then
+  read -r pt pb < "$state" || pt=0 pb=0
+  dt=$((total - pt))
+  db=$((busy - pb))
+  if (( dt > 0 )); then
+    printf '%d%%\n' $((100 * db / dt))
+  else
+    printf -- '--\n'
+  fi
+else
+  printf -- '--\n'
+fi
+
+printf '%s %s\n' "$total" "$busy" > "$state"
