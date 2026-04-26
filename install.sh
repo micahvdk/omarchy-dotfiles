@@ -29,7 +29,9 @@ sudo pacman -S --needed --noconfirm \
   ghostty \
   tmux \
   neovim \
-  pkgfile
+  pkgfile \
+  gnome-keyring \
+  libsecret
 
 log "Installing AUR packages (yay)"
 if ! command -v yay &>/dev/null; then
@@ -82,6 +84,27 @@ fi
 if command -v hyprctl &>/dev/null && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
   hyprctl reload >/dev/null 2>&1 || true
 fi
+
+# Configure PAM so gnome-keyring auto-unlocks at login with the user's
+# password (Apple Keychain-style for SSH keys). Idempotent: only appends if
+# the lines aren't already present. We patch every PAM service that's
+# plausibly the login entry point on this system.
+configure_keyring_pam() {
+  local service="$1"
+  local file="/etc/pam.d/$service"
+  [[ -f "$file" ]] || return 0
+  local auth_line="auth     optional  pam_gnome_keyring.so"
+  local sess_line="session  optional  pam_gnome_keyring.so auto_start"
+  if ! sudo grep -qF 'pam_gnome_keyring.so' "$file"; then
+    log "Adding pam_gnome_keyring to $file"
+    printf '\n# Added by omarchy-dotfiles for SSH key auto-unlock\n%s\n%s\n' \
+      "$auth_line" "$sess_line" | sudo tee -a "$file" >/dev/null
+  fi
+}
+
+for svc in login greetd sddm gdm-password lightdm ly; do
+  configure_keyring_pam "$svc"
+done
 
 if [[ ! -f "$DOTFILES/zsh/secret.zsh" ]]; then
   cp "$DOTFILES/zsh/secret.zsh.example" "$DOTFILES/zsh/secret.zsh"

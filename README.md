@@ -29,7 +29,19 @@ The installer is idempotent and will:
 - Symlink configs into `$HOME` and `$XDG_CONFIG_HOME` (overwriting anything there)
 - Create `~/.ssh/config.d/` for per-host overrides
 - Copy `zsh/secret.zsh.example` to `zsh/secret.zsh` (gitignored) for private exports
+- Configure `pam_gnome_keyring` so the keyring (and your SSH keys) auto-unlock at login
 - `chsh` your login shell to zsh
+
+### SSH key auto-unlock (Apple Keychain-style)
+
+`gnome-keyring` is installed and started by Hyprland (`exec-once` in
+`hypr/overrides.conf`); `zsh/env.zsh` points `SSH_AUTH_SOCK` at its agent and
+`ssh/config` has `AddKeysToAgent yes`. The installer adds `pam_gnome_keyring`
+to login PAM services so the keyring unlocks with your login password.
+
+After install, run `ssh-add ~/.ssh/id_ed25519` once and enter the passphrase —
+it's then remembered for future sessions. Manage stored secrets with
+`seahorse` (install on demand: `sudo pacman -S seahorse`).
 
 ### Bootstrap GitHub SSH
 
