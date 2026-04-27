@@ -75,7 +75,41 @@ tmux_fail() {
 }
 
 # --- auth ---------------------------------------------------------------
+# Order: env vars → sourced secret file (for non-interactive callers like
+# tmux's status-right that don't inherit the shell's exports) → gh CLI.
+# The sourced file may also provide COPILOT_PLAN / COPILOT_QUOTA /
+# COPILOT_RESET_DAY so the tmux segment matches your interactive shell.
 TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+if [[ -z "$TOKEN" ]]; then
+  load_from_file() {
+    # Extract simple `export VAR=value` lines (with optional quotes) for the
+    # vars we care about. Avoids actually sourcing files that may pull in
+    # interactive-shell-only frameworks (oh-my-zsh, etc).
+    local file="$1" var
+    [[ -r "$file" ]] || return 0
+    for var in GH_TOKEN GITHUB_TOKEN COPILOT_PLAN COPILOT_QUOTA COPILOT_RESET_DAY; do
+      [[ -n "${!var:-}" ]] && continue
+      local line value
+      line="$(grep -E "^[[:space:]]*export[[:space:]]+${var}=" "$file" | tail -n1)" || continue
+      [[ -z "$line" ]] && continue
+      value="${line#*=}"
+      # strip surrounding single or double quotes if present
+      [[ "$value" == \"*\" || "$value" == \'*\' ]] && value="${value:1:${#value}-2}"
+      printf -v "$var" '%s' "$value"
+      export "$var"
+    done
+  }
+  for secret_file in \
+    "${COPILOT_USAGE_SECRET_FILE:-}" \
+    "${DOTFILES:-$HOME/omarchy-dotfiles}/zsh/secret.zsh" \
+    "${DOTFILES:-$HOME/omarchy-dotfiles}/zsh/zshrc" \
+    "$HOME/.config/copilot-usage/token"; do
+    [[ -n "$secret_file" ]] && load_from_file "$secret_file"
+  done
+  TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+  PLAN="${COPILOT_PLAN:-$PLAN}"
+  QUOTA_OVERRIDE="${COPILOT_QUOTA:-$QUOTA_OVERRIDE}"
+fi
 if [[ -z "$TOKEN" ]]; then
   if command -v gh >/dev/null 2>&1 && gh auth token >/dev/null 2>&1; then
     TOKEN="$(gh auth token)"
@@ -216,12 +250,14 @@ SPARK="$(jq -r --argjson days "$SPARK_DAYS" '
 ' <<<"$COPILOT_ITEMS" 2>/dev/null || echo "")"
 
 if [[ "$REFRESH" -eq 1 ]]; then
-  # Compact tmux line: " copilot ▁▂▄▅█▃ 412/1500 27%"
+  # Compact tmux line: " copilot 958/1500 64%"
   if   awk "BEGIN{exit !($PCT >= 90)}"; then PFG="#[fg=red,bold]"
   elif awk "BEGIN{exit !($PCT >= 70)}"; then PFG="#[fg=yellow]"
   else                                       PFG="#[fg=green]"; fi
-  TMUX_LINE=$(printf "#[fg=magenta] copilot %s%s#[default] %s/%s %s%s%%#[default]" \
-    "$PFG" "$SPARK" "$USED" "$QUOTA" "$PFG" "$PCT")
+  USED_INT=$(awk -v u="$USED" 'BEGIN{ printf "%d", (u+0.5) }')
+  PCT_INT=$(awk -v p="$PCT"  'BEGIN{ printf "%d", (p+0.5) }')
+  TMUX_LINE=$(printf "#[fg=magenta]󰚩#[default] %s/%s %s%s%%#[default]" \
+    "$USED_INT" "$QUOTA" "$PFG" "$PCT_INT")
   printf "%s" "$TMUX_LINE" > "$CACHE_LINE"
   printf "%s\n" "$TMUX_LINE"
   exit 0

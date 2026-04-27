@@ -99,3 +99,4 @@ if [[ $- == *i* ]] \
    && command -v tmux &>/dev/null; then
   exec tmux new-session -A -s main
 fi
+export COPILOT_PLAN=pro_plus
