@@ -11,6 +11,7 @@ My personal dotfiles for [Omarchy](https://omarchy.org) (Arch Linux).
 - **Version manager:** [mise](https://mise.jdx.dev)
 - **Secrets:** [fnox](https://fnox.jdx.dev) (auto-loaded on `cd` into a project with `fnox.toml`)
 - **Encryption:** [age](https://age-encryption.org) — small, modern file encryption (`age` / `age-keygen`)
+- **Vault:** [rbw](https://github.com/doy/rbw) — Bitwarden/Vaultwarden CLI, used by `bin/bootstrap-secrets` to seed credentials
 - **Multiplexer:** tmux (prefix `C-b`, vi copy-mode, mouse on, splits `_`/`-`)
 - **Navigation:** zoxide + fzf (both shipped with Omarchy)
 - **Editor:** Neovim
@@ -57,6 +58,33 @@ After `install.sh`, authenticate with GitHub over SSH in one shot:
 This generates `~/.ssh/id_ed25519` (if missing), adds it to ssh-agent, uploads
 the public key to your GitHub account via `gh`, and verifies the connection.
 
+### Bootstrap secrets from Bitwarden / Vaultwarden
+
+If you'd rather pull existing credentials out of your vault instead of
+generating fresh ones, use:
+
+```sh
+./bin/bootstrap-secrets         # idempotent; skips files that already exist
+./bin/bootstrap-secrets --force # overwrite existing files
+```
+
+This uses [`rbw`](https://github.com/doy/rbw) (which integrates with
+gnome-keyring, so it stays unlocked between shells) and expects the
+following items in your vault:
+
+| Item name        | Field    | Lands at                         |
+| ---------------- | -------- | -------------------------------- |
+| `age-key`        | notes    | `~/.config/age/keys.txt` (mode 600) |
+| `ssh-id_ed25519` | notes    | `~/.ssh/id_ed25519` (mode 600; `.pub` derived) |
+| `GITHUB_TOKEN`   | password | encrypted into `~/.config/fnox/config.toml` via the `age` provider; auto-exported in every shell by `fnox activate zsh` |
+
+The first run prompts for your Bitwarden email and (optionally) a
+Vaultwarden base URL, then `rbw unlock`. Subsequent runs go straight to
+`rbw unlock` thanks to the keyring.
+
+`zsh/env.zsh` exports `FNOX_AGE_KEY_FILE=~/.config/age/keys.txt` so fnox
+can decrypt the global config from any shell — no plaintext token on disk.
+
 ## Layout
 
 ```
@@ -78,6 +106,9 @@ ssh/
   config        # ~/.ssh/config — includes ~/.ssh/config.d/*.config
 bin/
   bootstrap-github-ssh  # one-shot: generate key + upload to GitHub via gh
+  bootstrap-secrets     # one-shot: pull GITHUB_TOKEN / SSH key / age key from rbw
+  tmux-cpu              # status-bar helper: CPU % via /proc/stat sampling
+  tmux-battery          # status-bar helper: battery glyph + %
 install.sh
 ```
 

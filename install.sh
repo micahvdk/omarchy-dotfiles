@@ -30,6 +30,7 @@ sudo pacman -S --needed --noconfirm \
   neovim \
   pkgfile \
   age \
+  rbw \
   gnome-keyring \
   gcr-4 \
   libsecret
