@@ -72,11 +72,23 @@ This uses [`rbw`](https://github.com/doy/rbw) (which integrates with
 gnome-keyring, so it stays unlocked between shells) and expects the
 following items in your vault:
 
-| Item name        | Field    | Lands at                         |
-| ---------------- | -------- | -------------------------------- |
-| `age-key`        | notes    | `~/.config/age/keys.txt` (mode 600) |
-| `ssh-id_ed25519` | notes    | `~/.ssh/id_ed25519` (mode 600; `.pub` derived) |
-| `GITHUB_TOKEN`   | password | encrypted into `~/.config/fnox/config.toml` via the `age` provider; auto-exported in every shell by `fnox activate zsh` |
+| Item name               | Field    | Lands at                         |
+| ----------------------- | -------- | -------------------------------- |
+| `age-key`               | notes    | `~/.config/age/keys.txt` (mode 600) |
+| `ssh-id_ed25519`        | notes    | `~/.ssh/id_ed25519` (mode 600; `.pub` derived) |
+| `GITHUB_TOKEN`          | password | encrypted into `~/.config/fnox/config.toml` via the `age` provider; auto-exported in every shell by `fnox activate zsh` |
+| `environment-variables` | notes    | `KEY=VALUE` lines, each imported into fnox global (age-encrypted, auto-exported). Supports `export FOO=bar`, quoted values, `#` comments. |
+
+Seeding the vault from a machine that already has the secrets on disk:
+
+```sh
+./bin/push-secret ssh         # uploads ~/.ssh/id_ed25519 as 'ssh-id_ed25519'
+./bin/push-secret age         # uploads ~/.config/age/keys.txt as 'age-key'
+./bin/push-secret github      # prompts for token, stores as Login 'GITHUB_TOKEN'
+./bin/push-secret env <file>  # uploads a KEY=VALUE file as 'environment-variables'
+./bin/push-secret note <name> <file>   # generic Secure Note
+./bin/push-secret token <name> [-]     # generic Login (value from prompt or stdin)
+```
 
 The first run prompts for your Bitwarden email and (optionally) a
 Vaultwarden base URL, then `rbw unlock`. Subsequent runs go straight to
@@ -106,7 +118,8 @@ ssh/
   config        # ~/.ssh/config — includes ~/.ssh/config.d/*.config
 bin/
   bootstrap-github-ssh  # one-shot: generate key + upload to GitHub via gh
-  bootstrap-secrets     # one-shot: pull GITHUB_TOKEN / SSH key / age key from rbw
+  bootstrap-secrets     # pull age key / SSH key / GITHUB_TOKEN / env vars from rbw
+  push-secret           # opposite direction: upload a local file into the vault
   tmux-cpu              # status-bar helper: CPU % via /proc/stat sampling
   tmux-battery          # status-bar helper: battery glyph + %
   copilot-usage         # GitHub Copilot premium-request usage; --tmux for status-bar segment
