@@ -109,6 +109,7 @@ bin/
   bootstrap-secrets     # one-shot: pull GITHUB_TOKEN / SSH key / age key from rbw
   tmux-cpu              # status-bar helper: CPU % via /proc/stat sampling
   tmux-battery          # status-bar helper: battery glyph + %
+  copilot-usage         # GitHub Copilot premium-request usage; --tmux for status-bar segment
 install.sh
 ```
 

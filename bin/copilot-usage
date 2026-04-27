@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+# copilot-usage — show GitHub Copilot premium-request usage with a little ASCII graph.
+#
+# Auth (auto-detected, in order):
+#   1. $GH_TOKEN / $GITHUB_TOKEN env var
+#   2. `gh auth token` (run `gh auth login` once first)
+#
+# Quota override (optional):
+#   COPILOT_QUOTA=1500 copilot-usage         # e.g. Pro+
+#
+# Plans & default monthly premium-request quotas:
+#   free=50  pro=300  pro_plus=1500  business=300  enterprise=1000
+#
+# Usage:
+#   copilot-usage              # current month
+#   copilot-usage --json       # raw JSON usage items for copilot
+#   copilot-usage --month YYYY-MM
+#   copilot-usage --plan pro_plus
+set -euo pipefail
+
+PLAN="${COPILOT_PLAN:-auto}"
+QUOTA_OVERRIDE="${COPILOT_QUOTA:-}"
+MONTH=""
+JSON_ONLY=0
+TMUX_MODE=0
+REFRESH=0
+CACHE_TTL="${COPILOT_CACHE_TTL:-600}"   # seconds
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/copilot-usage"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --json) JSON_ONLY=1; shift ;;
+    --month) MONTH="$2"; shift 2 ;;
+    --plan) PLAN="$2"; shift 2 ;;
+    --tmux) TMUX_MODE=1; shift ;;
+    --refresh) REFRESH=1; shift ;;
+    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+mkdir -p "$CACHE_DIR"
+CACHE_LINE="$CACHE_DIR/tmux.line"
+CACHE_JSON="$CACHE_DIR/usage.json"
+
+# --- tmux fast path: serve from cache, refresh in background if stale --
+if [[ "$TMUX_MODE" -eq 1 && "$REFRESH" -eq 0 ]]; then
+  now=$(date +%s)
+  age=99999
+  if [[ -f "$CACHE_LINE" ]]; then
+    age=$(( now - $(stat -c %Y "$CACHE_LINE" 2>/dev/null || stat -f %m "$CACHE_LINE") ))
+  fi
+  if [[ -f "$CACHE_LINE" ]]; then cat "$CACHE_LINE"; else echo " copilot …"; fi
+  if (( age > CACHE_TTL )); then
+    # spawn background refresh, fully detached
+    ( "$0" --tmux --refresh >/dev/null 2>&1 & ) >/dev/null 2>&1
+  fi
+  exit 0
+fi
+
+# --- auth ---------------------------------------------------------------
+TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+if [[ -z "$TOKEN" ]]; then
+  if command -v gh >/dev/null 2>&1 && gh auth token >/dev/null 2>&1; then
+    TOKEN="$(gh auth token)"
+  fi
+fi
+if [[ -z "$TOKEN" ]]; then
+  echo "❌ No GitHub token found. Run \`gh auth login\` or export GH_TOKEN." >&2
+  exit 1
+fi
+
+api() {
+  curl -fsSL \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com$1"
+}
+
+# --- who am I -----------------------------------------------------------
+USER_JSON="$(api /user)"
+LOGIN="$(jq -r .login <<<"$USER_JSON")"
+
+# --- current billing month ---------------------------------------------
+if [[ -z "$MONTH" ]]; then MONTH="$(date -u +%Y-%m)"; fi
+YEAR="${MONTH%-*}"
+MON="${MONTH#*-}"
+
+# Default plan quotas (premium requests / month)
+detect_plan_from_skus() {
+  # Inspect SKUs from this month's copilot usage items to infer plan.
+  local skus
+  skus="$(jq -r '[.[].sku] | unique | .[] | ascii_downcase' <<<"$COPILOT_ITEMS" 2>/dev/null || true)"
+  if   grep -qE 'pro[_ ]?plus|pro\+'      <<<"$skus"; then echo pro_plus
+  elif grep -qE 'enterprise'              <<<"$skus"; then echo enterprise
+  elif grep -qE 'business'                <<<"$skus"; then echo business
+  elif grep -qE 'individual|^copilot_pro' <<<"$skus"; then echo pro
+  elif grep -qE 'free'                    <<<"$skus"; then echo free
+  else echo ""
+  fi
+}
+
+detect_plan_from_user() {
+  # Fallback: GitHub user plan (pro -> Copilot Pro is typical, free -> Copilot Free).
+  local p
+  p="$(jq -r '.plan.name // empty' <<<"$USER_JSON" 2>/dev/null | tr '[:upper:]' '[:lower:]')"
+  case "$p" in
+    pro) echo pro ;;
+    free) echo free ;;
+    *) echo "" ;;
+  esac
+}
+
+resolve_quota() {
+  case "$1" in
+    free)            echo 50 ;;
+    pro)             echo 300 ;;
+    pro_plus|pro+)   echo 1500 ;;
+    business)        echo 300 ;;
+    enterprise)      echo 1000 ;;
+    *) echo "" ;;
+  esac
+}
+
+# --- fetch usage --------------------------------------------------------
+# User-level billing usage endpoint returns line items for the given month.
+# https://docs.github.com/en/rest/billing/enhanced-billing
+USAGE="$(api "/users/$LOGIN/settings/billing/usage?year=$YEAR&month=$MON" || true)"
+if [[ -z "$USAGE" || "$USAGE" == "null" ]]; then
+  echo "❌ Could not fetch usage. Token needs the 'Plan' (read) fine-grained permission, or classic scope 'manage_billing:copilot' / 'read:user'." >&2
+  exit 1
+fi
+
+COPILOT_ITEMS="$(jq '[.usageItems[] | select(.product|ascii_downcase|test("copilot"))]' <<<"$USAGE")"
+
+if [[ "$JSON_ONLY" -eq 1 ]]; then
+  jq . <<<"$COPILOT_ITEMS"
+  exit 0
+fi
+
+# --- resolve plan & quota ----------------------------------------------
+PLAN_SOURCE="explicit"
+if [[ "$PLAN" == "auto" ]]; then
+  PLAN="$(detect_plan_from_skus)"
+  PLAN_SOURCE="sku"
+  if [[ -z "$PLAN" ]]; then
+    PLAN="pro"
+    PLAN_SOURCE="default (set --plan or COPILOT_PLAN to override)"
+  fi
+fi
+DEFAULT_QUOTA="$(resolve_quota "$PLAN")"
+if [[ -z "$DEFAULT_QUOTA" ]]; then echo "unknown plan: $PLAN" >&2; exit 2; fi
+QUOTA="${QUOTA_OVERRIDE:-$DEFAULT_QUOTA}"
+
+USED="$(jq '[.[] | select(.sku|ascii_downcase|test("premium")) | .quantity] | add // 0' <<<"$COPILOT_ITEMS")"
+NET_COST="$(jq '[.[] | .netAmount] | add // 0' <<<"$COPILOT_ITEMS")"
+
+# --- reset estimate ----------------------------------------------------
+# Copilot premium requests reset on your billing anniversary day each month.
+# GitHub's API doesn't expose this for personal subs, so we let you set
+# COPILOT_RESET_DAY (1-31). Default = 1 (first of next month).
+RESET_DAY="${COPILOT_RESET_DAY:-1}"
+TODAY_DAY=$(date -u +%-d)
+if (( TODAY_DAY < RESET_DAY )); then
+  # next reset is later this month
+  NEXT_RESET=$(date -u -d "${YEAR}-${MON}-${RESET_DAY}" +%Y-%m-%d 2>/dev/null \
+    || date -u -j -f "%Y-%m-%d" "${YEAR}-${MON}-${RESET_DAY}" +%Y-%m-%d)
+else
+  # next reset is next month
+  NEXT_RESET=$(date -u -d "${YEAR}-${MON}-01 +1 month" +%Y-%m-01 2>/dev/null \
+    || date -u -j -v+1m -f "%Y-%m-%d" "${YEAR}-${MON}-01" +%Y-%m-01)
+  NEXT_RESET="${NEXT_RESET%-*}-$(printf '%02d' "$RESET_DAY")"
+fi
+DAYS_LEFT=$(( ( $(date -u -d "$NEXT_RESET" +%s) - $(date -u +%s) ) / 86400 ))
+(( DAYS_LEFT < 0 )) && DAYS_LEFT=0
+
+# --- render -------------------------------------------------------------
+PCT=$(awk -v u="$USED" -v q="$QUOTA" 'BEGIN{ if(q==0){print 0}else{printf "%.1f", (u/q)*100} }')
+
+# Build sparkline of daily premium-request usage for the month.
+# Buckets: day-of-month -> sum(quantity). Scale to 8 levels.
+SPARK_DAYS=$(date -u -d "${YEAR}-${MON}-01 +1 month -1 day" +%-d 2>/dev/null \
+  || date -u -j -v+1m -v-1d -f "%Y-%m-%d" "${YEAR}-${MON}-01" +%-d)
+SPARK="$(jq -r --argjson days "$SPARK_DAYS" '
+  ([range(1; $days+1)] as $axis
+   | (map({(tostring): 0}) | add) as $z
+   | reduce .[] as $i ($z;
+       if ($i.sku|ascii_downcase|test("premium")) then
+         . + { ($i.date[8:10] | tonumber | tostring): (.[$i.date[8:10] | tonumber | tostring] + $i.quantity) }
+       else . end)
+   | [ $axis[] | tostring | . as $k | $z[$k] // 0 ]) as $vals
+  | ($vals | max) as $m
+  | if $m == 0 then ($vals|map("▁")|add)
+    else
+      $vals
+      | map(. / $m * 7 | floor)
+      | map(["▁","▂","▃","▄","▅","▆","▇","█"][.])
+      | add
+    end
+' <<<"$COPILOT_ITEMS" 2>/dev/null || echo "")"
+
+if [[ "$REFRESH" -eq 1 ]]; then
+  # Compact tmux line: " copilot ▁▂▄▅█▃ 412/1500 27%"
+  if   awk "BEGIN{exit !($PCT >= 90)}"; then PFG="#[fg=red,bold]"
+  elif awk "BEGIN{exit !($PCT >= 70)}"; then PFG="#[fg=yellow]"
+  else                                       PFG="#[fg=green]"; fi
+  TMUX_LINE=$(printf "#[fg=magenta] copilot %s%s#[default] %s/%s %s%s%%#[default]" \
+    "$PFG" "$SPARK" "$USED" "$QUOTA" "$PFG" "$PCT")
+  printf "%s" "$TMUX_LINE" > "$CACHE_LINE"
+  printf "%s\n" "$TMUX_LINE"
+  exit 0
+fi
+
+WIDTH=40
+FILL=$(awk -v u="$USED" -v q="$QUOTA" -v w="$WIDTH" 'BEGIN{
+  if(q==0){print 0; exit} f=int((u/q)*w); if(f>w)f=w; if(f<0)f=0; print f
+}')
+EMPTY=$(( WIDTH - FILL ))
+
+# Color thresholds
+if   awk "BEGIN{exit !($PCT >= 90)}"; then COLOR=$'\e[31m'  # red
+elif awk "BEGIN{exit !($PCT >= 70)}"; then COLOR=$'\e[33m'  # yellow
+else                                       COLOR=$'\e[32m'; fi  # green
+RESET=$'\e[0m' BOLD=$'\e[1m' DIM=$'\e[2m'
+
+bar=""
+for ((i=0;i<FILL;i++)); do bar+="█"; done
+for ((i=0;i<EMPTY;i++)); do bar+="░"; done
+
+printf "\n%s GitHub Copilot usage — %s%s\n" "$BOLD" "$LOGIN" "$RESET"
+printf "%s%s%s\n" "$DIM" "Plan: $PLAN ($PLAN_SOURCE)   Month: $MONTH   Quota: $QUOTA premium requests" "$RESET"
+printf "\n  %s%s%s  %s%s / %s  (%s%%)%s\n" \
+  "$COLOR" "$bar" "$RESET" "$BOLD" "$USED" "$QUOTA" "$PCT" "$RESET"
+if [[ -n "$SPARK" ]]; then
+  printf "\n  %sDaily:%s %s  %s(1..%s)%s\n" "$DIM" "$RESET" "$SPARK" "$DIM" "$SPARK_DAYS" "$RESET"
+fi
+printf "\n  %sResets:%s %s  (%s days)\n" "$DIM" "$RESET" "$NEXT_RESET" "$DAYS_LEFT"
+if awk "BEGIN{exit !($NET_COST > 0)}"; then
+  printf "  %sOverage cost so far:%s \$%s\n" "$DIM" "$RESET" "$NET_COST"
+fi
+printf "\n  %sBuy more / set budget:%s https://github.com/settings/billing/budgets\n\n" "$DIM" "$RESET"
