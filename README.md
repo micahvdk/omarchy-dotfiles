@@ -10,6 +10,7 @@ My personal dotfiles for [Omarchy](https://omarchy.org) (Arch Linux).
 - **Extra zsh plugins:** `zsh-autosuggestions`, `zsh-syntax-highlighting` (loaded after OMZ)
 - **Version manager:** [mise](https://mise.jdx.dev)
 - **Secrets:** [fnox](https://fnox.jdx.dev) (auto-loaded on `cd` into a project with `fnox.toml`)
+- **Encryption:** [age](https://age-encryption.org) — small, modern file encryption (`age` / `age-keygen`)
 - **Multiplexer:** tmux (prefix `C-b`, vi copy-mode, mouse on, splits `_`/`-`)
 - **Navigation:** zoxide + fzf (both shipped with Omarchy)
 - **Editor:** Neovim

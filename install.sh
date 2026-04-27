@@ -29,6 +29,7 @@ sudo pacman -S --needed --noconfirm \
   tmux \
   neovim \
   pkgfile \
+  age \
   gnome-keyring \
   gcr-4 \
   libsecret
