@@ -58,6 +58,22 @@ if [[ "$TMUX_MODE" -eq 1 && "$REFRESH" -eq 0 ]]; then
   exit 0
 fi
 
+# --- error helper for tmux mode ---------------------------------------
+ERROR_LOG="$CACHE_DIR/error.log"
+tmux_fail() {
+  # Write a short error tag to the cache so the user sees it in the status bar.
+  local tag="$1" detail="$2"
+  if [[ "$TMUX_MODE" -eq 1 ]]; then
+    printf "#[fg=red] copilot %s#[default]" "$tag" > "$CACHE_LINE"
+    {
+      echo "[$(date -u +%FT%TZ)] $tag: $detail"
+    } >> "$ERROR_LOG"
+  else
+    echo "❌ $detail" >&2
+  fi
+  exit 1
+}
+
 # --- auth ---------------------------------------------------------------
 TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 if [[ -z "$TOKEN" ]]; then
@@ -66,8 +82,7 @@ if [[ -z "$TOKEN" ]]; then
   fi
 fi
 if [[ -z "$TOKEN" ]]; then
-  echo "❌ No GitHub token found. Run \`gh auth login\` or export GH_TOKEN." >&2
-  exit 1
+  tmux_fail "AUTH?" "No GitHub token found. Run \`gh auth login\` or export GH_TOKEN."
 fi
 
 api() {
@@ -79,7 +94,8 @@ api() {
 }
 
 # --- who am I -----------------------------------------------------------
-USER_JSON="$(api /user)"
+USER_JSON="$(api /user 2>>"$ERROR_LOG")" \
+  || tmux_fail "AUTH?" "Could not call /user. Token may be invalid or lack scopes."
 LOGIN="$(jq -r .login <<<"$USER_JSON")"
 
 # --- current billing month ---------------------------------------------
@@ -126,10 +142,9 @@ resolve_quota() {
 # --- fetch usage --------------------------------------------------------
 # User-level billing usage endpoint returns line items for the given month.
 # https://docs.github.com/en/rest/billing/enhanced-billing
-USAGE="$(api "/users/$LOGIN/settings/billing/usage?year=$YEAR&month=$MON" || true)"
+USAGE="$(api "/users/$LOGIN/settings/billing/usage?year=$YEAR&month=$MON" 2>>"$ERROR_LOG" || true)"
 if [[ -z "$USAGE" || "$USAGE" == "null" ]]; then
-  echo "❌ Could not fetch usage. Token needs the 'Plan' (read) fine-grained permission, or classic scope 'manage_billing:copilot' / 'read:user'." >&2
-  exit 1
+  tmux_fail "SCOPE?" "Could not fetch usage for $LOGIN. Token needs scope 'manage_billing:copilot' or fine-grained 'Plan' (read). Try: gh auth refresh -s manage_billing:copilot,read:user"
 fi
 
 COPILOT_ITEMS="$(jq '[.usageItems[] | select(.product|ascii_downcase|test("copilot"))]' <<<"$USAGE")"
