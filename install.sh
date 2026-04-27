@@ -31,6 +31,7 @@ sudo pacman -S --needed --noconfirm \
   pkgfile \
   age \
   rbw \
+  jq \
   gnome-keyring \
   gcr-4 \
   libsecret
@@ -82,6 +83,9 @@ link "$DOTFILES/mise/config.toml"       "$HOME/.config/mise/config.toml"
 link "$DOTFILES/tmux/tmux.conf"         "$HOME/.config/tmux/tmux.conf"
 link "$DOTFILES/hypr/overrides.conf"    "$HOME/.config/hypr/overrides.conf"
 link "$DOTFILES/ssh/config"             "$HOME/.ssh/config"
+
+# Expose handy bin scripts on $PATH (~/.local/bin is on PATH on Arch by default).
+link "$DOTFILES/bin/copilot-usage"      "$HOME/.local/bin/copilot-usage"
 
 mkdir -p "$HOME/.ssh/config.d"
 chmod 700 "$HOME/.ssh" "$HOME/.ssh/config.d"
