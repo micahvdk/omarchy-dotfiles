@@ -75,11 +75,31 @@ tmux_fail() {
 }
 
 # --- auth ---------------------------------------------------------------
-# Order: env vars → sourced secret file (for non-interactive callers like
-# tmux's status-right that don't inherit the shell's exports) → gh CLI.
-# The sourced file may also provide COPILOT_PLAN / COPILOT_QUOTA /
+# Order: env vars → fnox (age-encrypted global config) → sourced secret
+# files → gh CLI. tmux's status-right runs us in a fresh non-interactive
+# shell so it doesn't inherit the user's exports; fnox + the file scrape
+# below are what make this work from the status bar.
+# The sourced files may also provide COPILOT_PLAN / COPILOT_QUOTA /
 # COPILOT_RESET_DAY so the tmux segment matches your interactive shell.
 TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+
+# fnox lookup (works for non-interactive callers like tmux). Requires the
+# age key on disk; fnox auto-discovers ~/.config/fnox/config.toml.
+if [[ -z "$TOKEN" ]] && command -v fnox >/dev/null 2>&1; then
+  : "${FNOX_AGE_KEY_FILE:=$HOME/.config/age/keys.txt}"
+  if [[ -r "$FNOX_AGE_KEY_FILE" ]]; then
+    export FNOX_AGE_KEY_FILE
+    for var in GH_TOKEN GITHUB_TOKEN COPILOT_PLAN COPILOT_QUOTA COPILOT_RESET_DAY; do
+      [[ -n "${!var:-}" ]] && continue
+      value="$(fnox get --if-missing ignore "$var" 2>/dev/null)" || continue
+      [[ -n "$value" ]] && export "$var=$value"
+    done
+    TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+    PLAN="${COPILOT_PLAN:-$PLAN}"
+    QUOTA_OVERRIDE="${COPILOT_QUOTA:-$QUOTA_OVERRIDE}"
+  fi
+fi
+
 if [[ -z "$TOKEN" ]]; then
   load_from_file() {
     # Extract simple `export VAR=value` lines (with optional quotes) for the
